@@ -135,6 +135,6 @@ Thanks to [raghavgarg97](https://github.com/raghavgarg97)'s report.
 <img src="./fig/loss_CRNN.png" width="650">
 <img src="./fig/loss_ResNetCRNN.png" width="650">
 
-
+该分支未修改完整，完整项目请转至https://github.com/jastinbeaber/Classification_video_arassambly
 
 <br>
