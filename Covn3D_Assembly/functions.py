@@ -41,14 +41,28 @@ class Dataset_3DCNN(data.Dataset):
 
     def read_images(self, path, selected_folder, use_transform):
         X = []
-        for i in self.frames:
-            image = Image.open(os.path.join(path, selected_folder, 'frame{:06d}.jpg'.format(i))).convert('L')
+        for video_folder in os.listdir(os.path.join(path, selected_folder)):
+            video_folder_path = os.path.join(path, selected_folder, video_folder)
+            print(video_folder_path)
+            if os.path.isdir(video_folder_path):
+                for i in self.frames:
+                    image_path = os.path.join(video_folder_path, f'FrameID{i:06d}.png')
+                    try:
+                        image = Image.open(image_path).convert('L')
+                        if use_transform is not None:
+                            image = use_transform(image)
 
-            if use_transform is not None:
-                image = use_transform(image)
+                        X.append(image)
+                    except FileNotFoundError:
+                        print("File not found:", image_path)
+                        # 处理文件不存在的情况，例如跳过当前循环或者进行其他处理
+                        continue
 
-            X.append(image.squeeze_(0))
         X = torch.stack(X, dim=0)
+        print(X.shape)
+        # print("X shape before unsqueeze:", X.shape)
+        # X = X.unsqueeze(0).unsqueeze(0)  # Add batch size and channel dimensions
+        # print("X shape after unsqueeze:", X.shape)
 
         return X
 
@@ -83,7 +97,7 @@ class Dataset_CRNN(data.Dataset):
     def read_images(self, path, selected_folder, use_transform):
         X = []
         for i in self.frames:
-            image = Image.open(os.path.join(path, selected_folder, 'frame{:06d}.jpg'.format(i)))
+            image = Image.open(os.path.join(path, selected_folder, 'frame{:06d}.png'.format(i)))
 
             if use_transform is not None:
                 image = use_transform(image)
@@ -154,7 +168,7 @@ def conv3D_output_size(img_size, padding, kernel_size, stride):
     return outshape
 
 class CNN3D(nn.Module):
-    def __init__(self, t_dim=120, img_x=90, img_y=120, drop_p=0.2, fc_hidden1=256, fc_hidden2=128, num_classes=50):
+    def __init__(self, t_dim=100, img_x=90, img_y=120, drop_p=0.2, fc_hidden1=256, fc_hidden2=128, num_classes=50):
         super(CNN3D, self).__init__()
 
         # set video dimension
@@ -174,7 +188,7 @@ class CNN3D(nn.Module):
         self.conv1_outshape = conv3D_output_size((self.t_dim, self.img_x, self.img_y), self.pd1, self.k1, self.s1)
         self.conv2_outshape = conv3D_output_size(self.conv1_outshape, self.pd2, self.k2, self.s2)
 
-        self.conv1 = nn.Conv3d(in_channels=1, out_channels=self.ch1, kernel_size=self.k1, stride=self.s1,
+        self.conv1 = nn.Conv3d(in_channels=3, out_channels=self.ch1, kernel_size=self.k1, stride=self.s1,
                                padding=self.pd1)
         self.bn1 = nn.BatchNorm3d(self.ch1)
         self.conv2 = nn.Conv3d(in_channels=self.ch1, out_channels=self.ch2, kernel_size=self.k2, stride=self.s2,

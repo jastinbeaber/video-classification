@@ -16,24 +16,24 @@ from sklearn.metrics import accuracy_score
 import pickle
 
 # set path
-data_path = "./jpegs_256/"    # define UCF-101 spatial data path
-action_name_path = "./UCF101actions.pkl"  # load preprocessed action names
-save_model_path = "./Conv3D_ckpt/"  # save Pytorch models
+data_path = "./databases/train/"    # define UCF-101 spatial data path
+action_name_path = "./data/HA4MAssemblyAction.pkl"  # load preprocessed action names
+save_model_path = "./model/Conv3D_Assembly_ckpt/"  # save Pytorch models
 
 # 3D CNN parameters
 fc_hidden1, fc_hidden2 = 256, 256
 dropout = 0.0        # dropout probability
 
 # training parameters
-k = 101            # number of target category
-epochs = 15
-batch_size = 30
+k = 13            # number of target category
+epochs = 5
+batch_size = 8
 learning_rate = 1e-4
 log_interval = 10
 img_x, img_y = 256, 342  # resize video 2d frame size
 
 # Select which frame to begin & end in videos
-begin_frame, end_frame, skip_frame = 1, 29, 1
+begin_frame, end_frame, skip_frame = 1,30, 1
 
 def train(log_interval, model, device, train_loader, optimizer, epoch):
     # set model as training mode
@@ -56,7 +56,9 @@ def train(log_interval, model, device, train_loader, optimizer, epoch):
 
         # to compute accuracy
         y_pred = torch.max(output, 1)[1]  # y_pred != output
-        step_score = accuracy_score(y.cpu().data.squeeze().numpy(), y_pred.cpu().data.squeeze().numpy())
+        # step_score = accuracy_score(y.cpu().data.squeeze().numpy(), y_pred.cpu().data.squeeze().numpy())
+        #step_score = accuracy_score([y.cpu().data.squeeze().numpy()], [y_pred.cpu().data.squeeze().numpy()])
+        step_score = accuracy_score(y.cpu().data.view(-1).numpy(), y_pred.cpu().data.view(-1).numpy())
         scores.append(step_score)         # computed on CPU
 
         loss.backward()
@@ -114,24 +116,29 @@ def validation(model, device, optimizer, test_loader):
 use_cuda = torch.cuda.is_available()                   # check if GPU exists
 device = torch.device("cuda" if use_cuda else "cpu")   # use CPU or GPU
 
-# load UCF101 actions names
-params = {'batch_size': batch_size, 'shuffle': True, 'num_workers': 4, 'pin_memory': True} if use_cuda else {}
+# load HA4M actions names
+params = {'batch_size': batch_size, 'shuffle': True, 'num_workers': 0, 'pin_memory': True} if use_cuda else {}
 
-# load UCF101 actions names
+# load HA4M actions names
 with open(action_name_path, 'rb') as f:
-    action_names = pickle.load(f)   # load UCF101 actions names
+    action_names = pickle.load(f)   # load HA4m actions names
+    #print(action_names)
 
+#print(action_names)
 # convert labels -> category
 le = LabelEncoder()
 le.fit(action_names)
-
 # show how many classes there are
 list(le.classes_)
-
+#print(list(le.classes_))
 # convert category -> 1-hot
 action_category = le.transform(action_names).reshape(-1, 1)
+
 enc = OneHotEncoder()
 enc.fit(action_category)
+# one_hot_encoded = enc.transform(action_category).toarray()
+# print(one_hot_encoded)
+
 
 # # example
 # y = ['HorseRace', 'YoYo', 'WalkingWithDog']
@@ -141,15 +148,13 @@ enc.fit(action_category)
 actions = []
 fnames = os.listdir(data_path)
 
+
 all_names = []
 for f in fnames:
     loc1 = f.find('v_')
     loc2 = f.find('_g')
     actions.append(f[(loc1 + 2): loc2])
-
     all_names.append(f)
-
-
 # list all data files
 all_X_list = all_names              # all video file names
 all_y_list = labels2cat(le, actions)    # all video labels
@@ -228,7 +233,7 @@ plt.title("training scores")
 plt.xlabel('epochs')
 plt.ylabel('accuracy')
 plt.legend(['train', 'test'], loc="upper left")
-title = "./fig_UCF101_3DCNN.png"
+title = "./fig_HA4m_3DCNN.png"
 plt.savefig(title, dpi=600)
 # plt.close(fig)
 plt.show()
